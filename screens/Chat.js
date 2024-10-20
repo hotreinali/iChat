@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { View, StyleSheet, TouchableOpacity, Keyboard, Text, ActivityIndicator, Image } from "react-native";
 import { Ionicons } from '@expo/vector-icons'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -11,7 +11,8 @@ import EmojiModal from 'react-native-emoji-modal';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import uuid from 'react-native-uuid';
-import { Audio } from 'expo-av';
+import { Audio, RecordingOptionsPresets } from 'expo-av';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 
 
 
@@ -25,8 +26,29 @@ function Chat({ route }) {
     const [recording, setRecording] = useState(null);
     const [sound, setSound] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [recordedAudio, setRecordedAudio] = useState(null);
+    const [recordingStatus, setRecordingStatus] = useState("idle");
+    const recordingRef = useRef(null);
+    const statusRef = useRef("");
+
+    function updateRecording(r) {
+        const rec = useMemo (() => setRecording(r), [r]);
+        return rec;
+    }
 
     async function startRecording() {
+        statusRef.current = "";
+        recordingRef.current = null;
+        setIsRecording(false);
+        // setRecording(null);
+        setRecordedAudio(null);
+
+        if (isRecording) {
+            console.warn("A recording is already in progress");
+            return;
+          }
+        
+
         try {
           const permissions = await Audio.requestPermissionsAsync();
     
@@ -36,79 +58,113 @@ function Chat({ route }) {
               playsInSilentModeIOS: true,
             });
     
-            const { recording } = await Audio.Recording.createAsync(
-              Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
+            // const { nrecording } = await Audio.Recording.createAsync(
+            //   Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
+            // );
+        //     setRecording(recording);
+  
+            // const { newRecording } = await Audio.Recording.createAsync(
+            //     Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
+            // );
+            const nrecording = new Audio.Recording();
+            console.log("Starting Recording");
+            await nrecording.prepareToRecordAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
             );
-            setRecording(recording);
-          } else {
-            setErrorMessage('No Permission!');
-          }
+            await nrecording.startAsync();
+            recordingRef.current = nrecording;
+            statusRef.current = "recording";
+            setIsRecording(true);
+            console.log(nrecording);
+            // setRecording(recordingRef);
+            // setRecording(nrecording);
+            console.log(recordingRef.current);
+            console.log(statusRef.current);
+            // setRecordingStatus("recording");
+            } else {
+                setErrorMessage('No Permission!');
+            }
         } catch (err) {
           console.error('Failed to start recording', err);
         }
       }
 
-      async function stopRecording() {
-
-        setRecording(undefined);
-        await recording.stopAndUnloadAsync();
+    async function stopRecording() {
+        // setIsRecording(false);
+        try {
+        //   if (statusRef.current === "recording") {
+            console.log("Stopping Recording");
+            await recordingRef.current.stopAndUnloadAsync();
+            const uri = recordingRef.current.getURI();
     
-        let updatedRecordings = [recordings];
-        const { sound, status } = await recording.createNewLoadedSoundAsync();
-        updatedRecordings.push({
-          sound: sound,
-          duration: toDuration(status.durationMillis),
-          file: recording.getURI(),
-        });
-        setRecordings(updatedRecordings);
-        setRecordingFile(updatedRecordings[1].file);
+            setRecordedAudio({
+              uri,
+              name: `recording-${Date.now()}.m4a`, // Change the file extension to .m4a
+              type: "audio/m4a", // Update the type to M4A
+            });
+    
+            // resert our states to record again
+            setRecording(null);
+            recordingRef.current = null;
+            setRecordingStatus("stopped");
+            statusRef.current = "stopped";
+            setIsRecording(false);
+        //   }
+        } catch (error) {
+          console.error("Failed to stop recording", error);
+        }
       }
 
-    const uploadAudio = async (uri) => {
-        const blob = await new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.onload = () => {
-                try {
-                    resolve(xhr.response);
-                } catch (error) {
-                    console.log("error:", error);
-                }
-            };
-            xhr.onerror = (e) => {
-                console.log(e);
-                reject(new TypeError("Network request failed"));
-            };
-            xhr.responseType = "blob";
-            xhr.open("GET", uri, true);
-            xhr.send(null);
-        });
-          if (blob != null) {
-            const uriParts = uri.split(".");
-            const fileType = uriParts[uriParts.length - 1];
-            firebase
-              .storage()
-              .ref()
-              .child(`nameOfTheFile.${fileType}`)
-              .put(blob, {
-                contentType: `audio/${fileType}`,
-              })
-              .then(() => {
-                console.log("Sent!");
-              })
-              .catch((e) => console.log("error:", e));
-            onSend([{
-                _id: randomString,
-                createdAt: new Date(),
-                text: '',
-                user: {
-                    _id: auth?.currentUser?.email,
-                    name: auth?.currentUser?.displayName,
-                    avatar: 'https://i.pravatar.cc/300'
-                }
-            }]);
-          } else {
-            console.log("erroor with blob");
+      async function handleRecordButtonPress() {
+        setRecordedAudio(null);
+        // setRecording(null);
+        recordingRef.current = null;
+        // console.log(recording)
+        // console.log(recordingStatus)
+        if (recordingRef.current) {
+          const audioUri = await stopRecording(recording);
+          if (audioUri) {
+            console.log("Saved audio file to", savedUri);
           }
+        } else {
+          await startRecording();
+        }
+      }
+
+      const saveSoundAndUpdateDoc = async (writing, recordings) => {
+        const user = auth.currentUser;
+        const path = `[folderNameHere if you like]/${user.uid}/${recordedAudio.name}}`;
+        const blob = await new Promise((resolve, reject) => {
+          const fetchXHR = new XMLHttpRequest();
+          fetchXHR.onload = function () {
+            resolve(fetchXHR.response);
+          };
+          fetchXHR.onerror = function (e) {
+            reject(new TypeError('Network request failed'));
+          };
+          fetchXHR.responseType = 'blob';
+          fetchXHR.open('GET', recordings, true);
+          fetchXHR.send(null);
+        }).catch((err) => console.log(err));
+      
+        const recordRef = ref(storage, path);
+      
+        await uploadBytes(recordRef, blob)
+          .then(async (snapshot) => {
+            const downloadURL = await getDownloadURL(recordRef).then((recordURL) => {
+              const addDocRef = collection(db, 'posts');
+              addDoc(addDocRef, {
+                creator: user.uid,
+                recordURL,
+                creation: serverTimestamp(),
+              })
+                .then(() => {})
+                .then(() => resolve())
+                .catch((err) => console.log(err));
+            });
+            blob.close();
+          })
+          .catch((err) => console.log(err));
       };
 
     useEffect(() => {
@@ -176,8 +232,8 @@ function Chat({ route }) {
         <Bubble
             {...props}
             wrapperStyle={{
-                right: { backgroundColor: colors.primary },
-                left: { backgroundColor: 'lightgrey' }
+                right: { backgroundColor: '#1877F2' },
+                left: { backgroundColor: '#F2F7FB' }
             }}
         />
     ), []);
@@ -204,30 +260,63 @@ function Chat({ route }) {
     const renderInputToolbar = useMemo(() => (props) => (
         <InputToolbar {...props}
             containerStyle={styles.inputToolbar}
-            renderActions={renderActions}
+            renderActions={renderButton}
+            // onPressActionButton={renderButton}
         />
     ), []);
 
-    const renderActions = useMemo(() => () => (
-        // <TouchableOpacity style={styles.emojiIcon} onPress={handleEmojiPanel}>
-        //     <View>
-        //         {/* <Ionicons
-        //             name='happy-outline'
-        //             size={32}
-        //             color={colors.teal} /> */}
+    const renderButton = useMemo(() => (props) => (
+        <>
+        <View {...props}>
+                {isRecording ? ( 
+                    <TouchableOpacity style={styles.emojiIcon} onPress={stopRecording}>
+                        <View >
+                            <FontAwesome6 name="stop-circle" size={24} color={"#1877F2"} />
+                        </View>
+                    </TouchableOpacity> )
+                    : (
+                        <TouchableOpacity style={styles.emojiIcon} onPress={startRecording}>
+                        <View >
+                            
+                            <Ionicons
+                                    name='mic'
+                                    size={32}
+                                    color={"#1877F2"} />
+                        </View>
+                    </TouchableOpacity>)
+                }
+                {/* {isRecording ? (
+                    <></>
+                ): (
+                <TouchableOpacity style={styles.emojiIcon} onPress={startRecording}>
+                    <View >
+                        
+                        <Ionicons
+                                name='mic'
+                                size={32}
+                                color={"#1877F2"} />
+                    </View>
+                </TouchableOpacity>
+                )
 
-        //     </View>
-        // </TouchableOpacity>
-        <TouchableOpacity style={styles.emojiIcon} onPress={startRecording}>
-            <View >
-                <Ionicons
-                        name='mic'
-                        size={32}
-                        color={"#1877F2"} />
-            </View>
-        </TouchableOpacity>
-    ), [modal]);
+                } */}
+        </View>
+        </>
+        
+        
+    ), [isRecording]);
 
+    // const renderButton = useMemo (() => () => (
+    //     <View>
+    //         {isRecording && ( 
+    //                 <TouchableOpacity style={styles.emojiIcon} onPress={stopRecording}>
+    //                     <View >
+    //                         <FontAwesome6 name="stop-circle" size={24} color={"#1877F2"} />
+    //                     </View>
+    //                 </TouchableOpacity> )
+    //             }
+    //         </View>
+    // ), []);
     // const handleEmojiPanel = useCallback(() => {
     //     if (modal) {
     //         setModal(false);
@@ -239,19 +328,29 @@ function Chat({ route }) {
 
     const renderLoading = useMemo(() => () => (
         <View style={styles.loadingContainer}>
-            <ActivityIndicator size='large' color={colors.teal} />
+            <ActivityIndicator size='large' color={"#1877F2"} />
         </View>
     ), []);
+       
 
     return (
         <>
+            <View>
+            {isRecording && ( 
+                    <TouchableOpacity style={styles.stopIcon} onPress={stopRecording}>
+                        <View >
+                            <FontAwesome6 name="stop-circle" size={24} color={"#1877F2"} />
+                        </View>
+                    </TouchableOpacity> )
+                }
+            </View>
             <GiftedChat
                 messages={messages}
-                showAvatarForEveryMessage={false}
-                showUserAvatar={false}
+                showAvatarForEveryMessage={true}
+                showUserAvatar={true}
                 onSend={messages => onSend(messages)}
                 imageStyle={{ height: 212, width: 212 }}
-                messagesContainerStyle={{ backgroundColor: '#fff' }}
+                messagesContainerStyle={{ backgroundColor: '#FFFFFF' }}
                 textInputStyle={{ backgroundColor: '#fff', borderRadius: 20 }}
                 user={{
                     _id: auth?.currentUser?.email,
@@ -260,16 +359,18 @@ function Chat({ route }) {
                 }}
                 renderBubble={renderBubble}
                 renderSend={renderSend}
+                // renderActions={renderActions}
+                onPressActionButton={renderButton}
                 renderUsernameOnMessage={true}
                 renderAvatarOnTop={true}
                 renderInputToolbar={renderInputToolbar}
                 minInputToolbarHeight={56}
                 scrollToBottom={true}
-                // onPressActionButton={handleEmojiPanel}
                 scrollToBottomStyle={styles.scrollToBottomStyle}
                 renderLoading={renderLoading}
             />
-
+            
+            
             {/* {modal &&
                 <EmojiModal
                     onPressOutside={handleEmojiPanel}
@@ -300,9 +401,9 @@ function Chat({ route }) {
 const styles = StyleSheet.create({
     inputToolbar: {
         bottom: 6,
-        marginLeft: 8,
-        marginRight: 8,
-        borderRadius: 16,
+        // marginLeft: 8,
+        // marginRight: 8,
+        // borderRadius: 16,
     },
     emojiIcon: {
         marginLeft: 4,
@@ -310,6 +411,9 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
+    },
+    stopIcon:{
+        
     },
     emojiModal: {},
     emojiContainerModal: {
