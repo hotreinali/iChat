@@ -13,6 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import uuid from 'react-native-uuid';
 import { Audio, RecordingOptionsPresets } from 'expo-av';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 
 
 
@@ -25,16 +26,13 @@ function Chat({ route }) {
     const [isRecording, setIsRecording] = useState(false);
     const [recording, setRecording] = useState(null);
     const [sound, setSound] = useState(null);
+    const soundRef = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [recordedAudio, setRecordedAudio] = useState(null);
     const [recordingStatus, setRecordingStatus] = useState("idle");
     const recordingRef = useRef(null);
     const statusRef = useRef("");
-
-    function updateRecording(r) {
-        const rec = useMemo (() => setRecording(r), [r]);
-        return rec;
-    }
+    const audioRef = useRef(null);
 
     async function startRecording() {
         statusRef.current = "";
@@ -58,14 +56,6 @@ function Chat({ route }) {
               playsInSilentModeIOS: true,
             });
     
-            // const { nrecording } = await Audio.Recording.createAsync(
-            //   Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
-            // );
-        //     setRecording(recording);
-  
-            // const { newRecording } = await Audio.Recording.createAsync(
-            //     Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
-            // );
             const nrecording = new Audio.Recording();
             console.log("Starting Recording");
             await nrecording.prepareToRecordAsync(
@@ -75,12 +65,6 @@ function Chat({ route }) {
             recordingRef.current = nrecording;
             statusRef.current = "recording";
             setIsRecording(true);
-            console.log(nrecording);
-            // setRecording(recordingRef);
-            // setRecording(nrecording);
-            console.log(recordingRef.current);
-            console.log(statusRef.current);
-            // setRecordingStatus("recording");
             } else {
                 setErrorMessage('No Permission!');
             }
@@ -90,82 +74,87 @@ function Chat({ route }) {
       }
 
     async function stopRecording() {
-        // setIsRecording(false);
         try {
-        //   if (statusRef.current === "recording") {
             console.log("Stopping Recording");
             await recordingRef.current.stopAndUnloadAsync();
-            const uri = recordingRef.current.getURI();
-    
-            setRecordedAudio({
-              uri,
-              name: `recording-${Date.now()}.m4a`, // Change the file extension to .m4a
-              type: "audio/m4a", // Update the type to M4A
-            });
-    
+            const ruri = recordingRef.current.getURI();
+           
+            audioRef.current = {
+                uri: ruri,
+                name: `recording-${Date.now()}.m4a`, // Change the file extension to .m4a
+                type: "audio/m4a", // Update the type to M4A
+              };
+            console.log("stopped recording");
             // resert our states to record again
             setRecording(null);
             recordingRef.current = null;
             setRecordingStatus("stopped");
             statusRef.current = "stopped";
             setIsRecording(false);
+            uploadAudio(audioRef.current.uri);
         //   }
         } catch (error) {
           console.error("Failed to stop recording", error);
         }
       }
 
-      async function handleRecordButtonPress() {
-        setRecordedAudio(null);
-        // setRecording(null);
-        recordingRef.current = null;
-        // console.log(recording)
-        // console.log(recordingStatus)
-        if (recordingRef.current) {
-          const audioUri = await stopRecording(recording);
-          if (audioUri) {
-            console.log("Saved audio file to", savedUri);
-          }
-        } else {
-          await startRecording();
-        }
-      }
-
-      const saveSoundAndUpdateDoc = async (writing, recordings) => {
-        const user = auth.currentUser;
-        const path = `[folderNameHere if you like]/${user.uid}/${recordedAudio.name}}`;
+    const uploadAudio = async(uri) => {
+    
         const blob = await new Promise((resolve, reject) => {
-          const fetchXHR = new XMLHttpRequest();
-          fetchXHR.onload = function () {
-            resolve(fetchXHR.response);
-          };
-          fetchXHR.onerror = function (e) {
-            reject(new TypeError('Network request failed'));
-          };
-          fetchXHR.responseType = 'blob';
-          fetchXHR.open('GET', recordings, true);
-          fetchXHR.send(null);
-        }).catch((err) => console.log(err));
-      
-        const recordRef = ref(storage, path);
-      
-        await uploadBytes(recordRef, blob)
-          .then(async (snapshot) => {
-            const downloadURL = await getDownloadURL(recordRef).then((recordURL) => {
-              const addDocRef = collection(db, 'posts');
-              addDoc(addDocRef, {
-                creator: user.uid,
-                recordURL,
-                creation: serverTimestamp(),
-              })
-                .then(() => {})
-                .then(() => resolve())
-                .catch((err) => console.log(err));
-            });
-            blob.close();
-          })
-          .catch((err) => console.log(err));
-      };
+            const fetchXHR = new XMLHttpRequest();
+            fetchXHR.onload = function () {
+              resolve(fetchXHR.response);
+            };
+            fetchXHR.onerror = function (e) {
+              reject(new TypeError('Network request failed'));
+            };
+            fetchXHR.responseType = 'blob';
+            fetchXHR.open('GET', uri, true);
+            fetchXHR.send(null);
+          }).catch((err) => console.log(err));
+
+        const randomString = uuid.v4();
+        const audio = ref(getStorage(), randomString);
+        // console.log(audio);
+        await uploadBytes(audio, blob, {
+            contentType: 'audio/mp4'
+        });
+        console.log('File uploaded successfully');
+        // blob.close();
+
+        const uploadedAudioString = await getDownloadURL(audio);
+        console.log('Download URL:', uploadedAudioString);
+
+        onSend([{
+            _id: randomString,
+            createdAt: new Date(),
+            text: '',
+            audio: uploadedAudioString,
+            user: {
+                _id: auth?.currentUser?.email,
+                name: auth?.currentUser?.displayName,
+                avatar: 'https://i.pravatar.cc/300'
+            }
+        }]);
+    };
+
+    // const renderMessageAudio = useMemo(() => (props) => (
+    //     const currentMessage = props.currentMessage;
+
+    //     const playSound = async () => {
+    //         const { sound } = await Audio.Sound.createAsync({ uri: currentMessage.audio });
+    //         await sound.playAsync();
+    //       };
+
+    //       return (
+    //         <View style={{ padding: 10 }}>
+    //           <TouchableOpacity onPress={playSound}>
+    //             <Text style={{ color: '#1877F2' }}>Play Audio</Text>
+    //           </TouchableOpacity>
+    //         </View>
+    //       );
+
+    // ), []);
 
     useEffect(() => {
         const unsubscribe = onSnapshot(doc(database, 'chats', route.params.id), (doc) => {
@@ -188,55 +177,60 @@ function Chat({ route }) {
         }, { merge: true });
     }, [route.params.id, messages]);
 
-    const pickImage = async () => {
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 1,
-        });
+    // const pickImage = async () => {
+    //     let result = await ImagePicker.launchImageLibraryAsync({
+    //         mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    //         allowsEditing: true,
+    //         quality: 1,
+    //     });
 
-        if (!result.canceled) {
-            await uploadImageAsync(result.assets[0].uri);
-        }
-    };
+    //     if (!result.canceled) {
+    //         await uploadImageAsync(result.assets[0].uri);
+    //     }
+    // };
 
-    const uploadImageAsync = async (uri) => {
-        const blob = await new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.onload = () => resolve(xhr.response);
-            xhr.onerror = () => reject(new TypeError("Network request failed"));
-            xhr.responseType = "blob";
-            xhr.open("GET", uri, true);
-            xhr.send(null);
-        });
-        const randomString = uuid.v4();
-        const fileRef = ref(getStorage(), randomString);
-        await uploadBytes(fileRef, blob);
-        blob.close();
+    // const uploadImageAsync = async (uri) => {
+    //     const blob = await new Promise((resolve, reject) => {
+    //         const xhr = new XMLHttpRequest();
+    //         xhr.onload = () => resolve(xhr.response);
+    //         xhr.onerror = () => reject(new TypeError("Network request failed"));
+    //         xhr.responseType = "blob";
+    //         xhr.open("GET", uri, true);
+    //         xhr.send(null);
+    //     });
+    //     const randomString = uuid.v4();
+    //     const fileRef = ref(getStorage(), randomString);
+    //     await uploadBytes(fileRef, blob);
+    //     blob.close();
 
-        const uploadedFileString = await getDownloadURL(fileRef);
-        onSend([{
-            _id: randomString,
-            createdAt: new Date(),
-            text: '',
-            image: uploadedFileString,
-            user: {
-                _id: auth?.currentUser?.email,
-                name: auth?.currentUser?.displayName,
-                avatar: 'https://i.pravatar.cc/300'
-            }
-        }]);
-    };
+    //     const uploadedFileString = await getDownloadURL(fileRef);
+    //     onSend([{
+    //         _id: randomString,
+    //         createdAt: new Date(),
+    //         text: '',
+    //         image: uploadedFileString,
+    //         user: {
+    //             _id: auth?.currentUser?.email,
+    //             name: auth?.currentUser?.displayName,
+    //             avatar: 'https://i.pravatar.cc/300'
+    //         }
+    //     }]);
+    // };
 
     const renderBubble = useMemo(() => (props) => (
         <Bubble
             {...props}
+            renderMessageAudio={(props) => {
+                return (<View url={props.currentMessage.audio} />)
+            }}
             wrapperStyle={{
                 right: { backgroundColor: '#1877F2' },
                 left: { backgroundColor: '#F2F7FB' }
             }}
         />
     ), []);
+
+    // const 
 
     const renderSend = useMemo(() => (props) => (
         <>
@@ -257,25 +251,40 @@ function Chat({ route }) {
         </>
     ), []);
 
-    const renderInputToolbar = useMemo(() => (props) => (
+    const renderInputToolbarStop = useMemo(() => (props) => (
         <InputToolbar {...props}
             containerStyle={styles.inputToolbar}
-            renderActions={renderButton}
+            renderActions={renderStop}
             // onPressActionButton={renderButton}
         />
     ), []);
 
-    const renderButton = useMemo(() => (props) => (
+    const renderInputToolbarStart = useMemo(() => (props) => (
+        <InputToolbar {...props}
+            containerStyle={styles.inputToolbar}
+            renderActions={renderStart}
+            // onPressActionButton={renderButton}
+        />
+    ), []);
+
+    const renderStop = useMemo(() => (props) => (
         <>
         <View {...props}>
-                {isRecording ? ( 
                     <TouchableOpacity style={styles.emojiIcon} onPress={stopRecording}>
                         <View >
                             <FontAwesome6 name="stop-circle" size={24} color={"#1877F2"} />
                         </View>
-                    </TouchableOpacity> )
-                    : (
-                        <TouchableOpacity style={styles.emojiIcon} onPress={startRecording}>
+                    </TouchableOpacity> 
+                   
+        </View>
+        </>
+        
+        
+    ), [isRecording]);
+
+    const renderStart = useMemo(() => (props) => (
+        <View {...props}>
+                <TouchableOpacity style={styles.emojiIcon} onPress={startRecording}>
                         <View >
                             
                             <Ionicons
@@ -283,40 +292,9 @@ function Chat({ route }) {
                                     size={32}
                                     color={"#1877F2"} />
                         </View>
-                    </TouchableOpacity>)
-                }
-                {/* {isRecording ? (
-                    <></>
-                ): (
-                <TouchableOpacity style={styles.emojiIcon} onPress={startRecording}>
-                    <View >
-                        
-                        <Ionicons
-                                name='mic'
-                                size={32}
-                                color={"#1877F2"} />
-                    </View>
                 </TouchableOpacity>
-                )
-
-                } */}
         </View>
-        </>
-        
-        
     ), [isRecording]);
-
-    // const renderButton = useMemo (() => () => (
-    //     <View>
-    //         {isRecording && ( 
-    //                 <TouchableOpacity style={styles.emojiIcon} onPress={stopRecording}>
-    //                     <View >
-    //                         <FontAwesome6 name="stop-circle" size={24} color={"#1877F2"} />
-    //                     </View>
-    //                 </TouchableOpacity> )
-    //             }
-    //         </View>
-    // ), []);
     // const handleEmojiPanel = useCallback(() => {
     //     if (modal) {
     //         setModal(false);
@@ -335,19 +313,36 @@ function Chat({ route }) {
 
     return (
         <>
-            <View>
-            {isRecording && ( 
-                    <TouchableOpacity style={styles.stopIcon} onPress={stopRecording}>
-                        <View >
-                            <FontAwesome6 name="stop-circle" size={24} color={"#1877F2"} />
-                        </View>
-                    </TouchableOpacity> )
-                }
-            </View>
-            <GiftedChat
+            {isRecording ? (
+                <GiftedChat
                 messages={messages}
-                showAvatarForEveryMessage={true}
-                showUserAvatar={true}
+                showAvatarForEveryMessage={false}
+                showUserAvatar={false}
+                onSend={messages => onSend(messages)}
+                imageStyle={{ height: 212, width: 212 }}
+                messagesContainerStyle={{ backgroundColor: '#FFFFFF' }}
+                textInputStyle={{ backgroundColor: '#fff', borderRadius: 20 }}
+                user={{
+                    _id: auth?.currentUser?.email,
+                    name: auth?.currentUser?.displayName,
+                    avatar: 'https://i.pravatar.cc/300'
+                }}
+                renderBubble={renderBubble}
+                renderSend={renderSend}
+                renderUsernameOnMessage={true}
+                renderAvatarOnTop={true}
+                renderInputToolbar={renderInputToolbarStop}
+                minInputToolbarHeight={56}
+                scrollToBottom={true}
+                scrollToBottomStyle={styles.scrollToBottomStyle}
+                renderLoading={renderLoading}
+                renderMessageAudio={messages => rende}
+            />
+            ):(
+                <GiftedChat
+                messages={messages}
+                showAvatarForEveryMessage={false}
+                showUserAvatar={false}
                 onSend={messages => onSend(messages)}
                 imageStyle={{ height: 212, width: 212 }}
                 messagesContainerStyle={{ backgroundColor: '#FFFFFF' }}
@@ -360,15 +355,18 @@ function Chat({ route }) {
                 renderBubble={renderBubble}
                 renderSend={renderSend}
                 // renderActions={renderActions}
-                onPressActionButton={renderButton}
+                // onPressActionButton={renderButton}
                 renderUsernameOnMessage={true}
                 renderAvatarOnTop={true}
-                renderInputToolbar={renderInputToolbar}
+                renderInputToolbar={renderInputToolbarStart}
                 minInputToolbarHeight={56}
                 scrollToBottom={true}
                 scrollToBottomStyle={styles.scrollToBottomStyle}
                 renderLoading={renderLoading}
+                // renderMessageAudio={renderMessageAudio}
             />
+            )}
+            
             
             
             {/* {modal &&
