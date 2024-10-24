@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Keyboard, Text, ActivityIndicator, 
 import { Ionicons } from '@expo/vector-icons'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GiftedChat, Bubble, Send, InputToolbar } from 'react-native-gifted-chat'
-import { auth, database } from '../config/firebase';
+import { auth, database, storage } from '../config/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { colors } from '../config/constants';
@@ -14,7 +14,8 @@ import uuid from 'react-native-uuid';
 import { Audio, RecordingOptionsPresets } from 'expo-av';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-
+import AudioBubble from '../components/AudioBubble';
+import TextBubble from '../components/TextBubble';
 
 
 function Chat({ route }) {
@@ -30,9 +31,11 @@ function Chat({ route }) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [recordedAudio, setRecordedAudio] = useState(null);
     const [recordingStatus, setRecordingStatus] = useState("idle");
+    const [transcript, setTranscript] = useState("");
     const recordingRef = useRef(null);
     const statusRef = useRef("");
     const audioRef = useRef(null);
+    const urlRef = useRef("");
 
     async function startRecording() {
         statusRef.current = "";
@@ -114,16 +117,26 @@ function Chat({ route }) {
           }).catch((err) => console.log(err));
 
         const randomString = uuid.v4();
+        urlRef.current = randomString;
+        // console.log(urlRef.current);
         const audio = ref(getStorage(), randomString);
         // console.log(audio);
-        await uploadBytes(audio, blob, {
-            contentType: 'audio/mp4'
-        });
+        // console.log(audio);
+        // await uploadBytes(audio, blob, {
+        //     contentType: 'audio/mp4'
+        // });
+        await uploadBytes(audio, blob)
         console.log('File uploaded successfully');
         // blob.close();
-
         const uploadedAudioString = await getDownloadURL(audio);
-        console.log('Download URL:', uploadedAudioString);
+        // console.log('Download URL:', uploadedAudioString);
+        
+        
+        // const reference = storage().ref(`${url}.wav_transcription.txt`);
+        // const path_ = extractPathFromUrl(uploadedAudioString);
+        
+        // const text = loadTranscript();
+        // console.log(text);
 
         onSend([{
             _id: randomString,
@@ -137,6 +150,50 @@ function Chat({ route }) {
             }
         }]);
     };
+
+
+    // async function loadTranscript () {
+    //     // const url = urlRef.current;
+    //     // const reference = storage().ref(`${url}.wav_transcription.txt`);
+    //     // const u = await reference.getDownloadURL();
+    //     // const response = await fetch(u);
+    //     // const text = response.text();
+    //     // return reference;
+    //     const path = urlRef.current + '.wav_transcription.txt';
+    //     console.log(path);
+    //     const reference = ref(getStorage(), path);
+    //     console.log('textRef:', reference);
+    //     const u = await getDownloadURL(reference);
+    //     console.log(u);
+    //     const response = await fetch(u);
+    //     console.log('Fetch response:', response);
+    //     const textContent = await response.text();
+    //     console.log('Raw text content:', textContent);
+    //     // JSON.parse might fail if textContent is not valid JSON
+        // let json;
+        // try {
+        //   json = JSON.parse(textContent);
+        //   console.log(json);
+        // } catch (error) {
+        //   console.error('Error parsing JSON:', error);
+        //   setTranscript('Error parsing JSON');
+        //   return;
+        // }
+        // // const json = await response.json();
+        // const transcriptText = json.results[0].alternatives[0].transcript;
+        // console.log(json.results[0])
+        // console.log(transcriptText);
+        // const text = transcriptText;
+    //     console.log(text);
+    // }
+
+    // useEffect(() => {
+    //     (async () => {
+    //       const text = await loadScript();
+    //       console.log(text);
+    //       setTranscript(text);
+    //     })();
+    //   }, []);
 
     // const renderMessageAudio = useMemo(() => (props) => (
     //     const currentMessage = props.currentMessage;
@@ -156,6 +213,14 @@ function Chat({ route }) {
 
     // ), []);
 
+    const renderMessageAudio = (props) => {
+        return <AudioBubble {...props} />;
+      };
+
+    // const renderMessageText = (props) => {
+    //     return <TextBubble {...props} />;
+    //   };
+
     useEffect(() => {
         const unsubscribe = onSnapshot(doc(database, 'chats', route.params.id), (doc) => {
             setMessages(doc.data().messages.map((message) => ({
@@ -163,6 +228,7 @@ function Chat({ route }) {
                 createdAt: message.createdAt.toDate(),
                 image: message.image ?? '',
                 audio: message.audio ?? '',
+                script: messages.script ?? '',
             })));
         });
 
@@ -220,9 +286,9 @@ function Chat({ route }) {
     const renderBubble = useMemo(() => (props) => (
         <Bubble
             {...props}
-            renderMessageAudio={(props) => {
-                return (<View url={props.currentMessage.audio} />)
-            }}
+            // renderMessageText={(props) => {
+            //     return (<View><Text>{transcript}</Text></View>)
+            // }}
             wrapperStyle={{
                 right: { backgroundColor: '#1877F2' },
                 left: { backgroundColor: '#F2F7FB' }
@@ -336,7 +402,8 @@ function Chat({ route }) {
                 scrollToBottom={true}
                 scrollToBottomStyle={styles.scrollToBottomStyle}
                 renderLoading={renderLoading}
-                renderMessageAudio={messages => rende}
+                renderMessageAudio={renderMessageAudio}
+                // renderMessageText={renderMessageText}
             />
             ):(
                 <GiftedChat
@@ -363,7 +430,8 @@ function Chat({ route }) {
                 scrollToBottom={true}
                 scrollToBottomStyle={styles.scrollToBottomStyle}
                 renderLoading={renderLoading}
-                // renderMessageAudio={renderMessageAudio}
+                renderMessageAudio={renderMessageAudio}
+                // renderMessageText={renderMessageText}
             />
             )}
             
@@ -393,6 +461,7 @@ function Chat({ route }) {
                 />
             } */}
         </>
+        
     );
 }
 
