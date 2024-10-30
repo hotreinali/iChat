@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Button, TextInput, Image, SafeAreaView, TouchableOpacity, StatusBar, Alert } from "react-native";
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, database } from '../config/firebase';
 import { colors } from '../config/constants';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDocs, collection } from 'firebase/firestore';
 import { Dropdown } from 'react-native-element-dropdown';
 // const backImage = require("../assets/background.png");
 
@@ -12,6 +12,7 @@ export default function SignUp({ navigation }) {
     const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [list, setList] = useState([]);
 
     const onHandleSignup = () => {
         if (email !== '' && password !== '') {
@@ -22,7 +23,8 @@ export default function SignUp({ navigation }) {
                             id: cred.user.uid,
                             email: cred.user.email,
                             name: cred.user.displayName,
-                            about: 'Available'
+                            about: 'Available',
+                            language: value
                         })
                     })
                     console.log('Signup success: ' + cred.user.email)
@@ -30,6 +32,32 @@ export default function SignUp({ navigation }) {
                 .catch((err) => Alert.alert("Signup error", err.message));
         }
     };
+
+    useEffect(() => {
+        const fetchData = async () => {
+          try {
+            // Reference to the collection
+            const querySnapshot = await getDocs(collection(database, 'languages'));
+            
+            // Map the data to a list
+            const listData = querySnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            
+            setList(listData);
+          } catch (error) {
+            console.error('Error fetching data:', error);
+          } 
+        };
+    
+        fetchData();
+      }, []);
+    
+    const cleanData = list.map(({ id, ...rest }) => rest);
+    
+    // console.log(data);
+    // const data = list;
     const data = [
         { label: 'Item 1', value: '1' },
         { label: 'Item 2', value: '2' },
@@ -41,6 +69,7 @@ export default function SignUp({ navigation }) {
         { label: 'Item 8', value: '8' },
       ];
     const [value, setValue] = useState(null);
+    const valueRef = useRef(null);
     const [isFocus, setIsFocus] = useState(false);
 
     return (
@@ -90,28 +119,24 @@ export default function SignUp({ navigation }) {
                     selectedTextStyle={styles.selectedTextStyle}
                     inputSearchStyle={styles.inputSearchStyle}
                     iconStyle={styles.iconStyle}
-                    data={data}
+                    data={cleanData}
                     search
                     maxHeight={300}
-                    labelField="label"
-                    valueField="value"
-                    placeholder={!isFocus ? 'Select item' : '...'}
+                    labelField="name"
+                    valueField="code"
+                    placeholder={!isFocus ? 'Select Default Language' : '...'}
                     searchPlaceholder="Search..."
                     value={value}
                     onFocus={() => setIsFocus(true)}
                     onBlur={() => setIsFocus(false)}
                     onChange={item => {
-                        setValue(item.value);
+                        // console.log(item.name);
+                        setValue(item.code);
+                        // console.log(value);
+                        // valueRef.current = item.name;
+                        // console.log(valueRef.current);
                         setIsFocus(false);
                     }}
-                    // renderLeftIcon={() => (
-                    //     <AntDesign
-                    //     style={styles.icon}
-                    //     color={isFocus ? 'blue' : 'black'}
-                    //     name="Safety"
-                    //     size={20}
-                    //     />
-                    // )}
                     />
                 </View>
                 <TouchableOpacity style={styles.button} onPress={onHandleSignup}>
@@ -184,4 +209,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         paddingHorizontal: 8,
       },
+    selectedTextStyle: {
+        fontSize: 16
+    }
 });
