@@ -152,74 +152,11 @@ function Chat({ route }) {
     };
 
 
-    // async function loadTranscript () {
-    //     // const url = urlRef.current;
-    //     // const reference = storage().ref(`${url}.wav_transcription.txt`);
-    //     // const u = await reference.getDownloadURL();
-    //     // const response = await fetch(u);
-    //     // const text = response.text();
-    //     // return reference;
-    //     const path = urlRef.current + '.wav_transcription.txt';
-    //     console.log(path);
-    //     const reference = ref(getStorage(), path);
-    //     console.log('textRef:', reference);
-    //     const u = await getDownloadURL(reference);
-    //     console.log(u);
-    //     const response = await fetch(u);
-    //     console.log('Fetch response:', response);
-    //     const textContent = await response.text();
-    //     console.log('Raw text content:', textContent);
-    //     // JSON.parse might fail if textContent is not valid JSON
-        // let json;
-        // try {
-        //   json = JSON.parse(textContent);
-        //   console.log(json);
-        // } catch (error) {
-        //   console.error('Error parsing JSON:', error);
-        //   setTranscript('Error parsing JSON');
-        //   return;
-        // }
-        // // const json = await response.json();
-        // const transcriptText = json.results[0].alternatives[0].transcript;
-        // console.log(json.results[0])
-        // console.log(transcriptText);
-        // const text = transcriptText;
-    //     console.log(text);
-    // }
-
-    // useEffect(() => {
-    //     (async () => {
-    //       const text = await loadScript();
-    //       console.log(text);
-    //       setTranscript(text);
-    //     })();
-    //   }, []);
-
-    // const renderMessageAudio = useMemo(() => (props) => (
-    //     const currentMessage = props.currentMessage;
-
-    //     const playSound = async () => {
-    //         const { sound } = await Audio.Sound.createAsync({ uri: currentMessage.audio });
-    //         await sound.playAsync();
-    //       };
-
-    //       return (
-    //         <View style={{ padding: 10 }}>
-    //           <TouchableOpacity onPress={playSound}>
-    //             <Text style={{ color: '#1877F2' }}>Play Audio</Text>
-    //           </TouchableOpacity>
-    //         </View>
-    //       );
-
-    // ), []);
 
     const renderMessageAudio = (props) => {
         return <AudioBubble {...props} />;
       };
 
-    // const renderMessageText = (props) => {
-    //     return <TextBubble {...props} />;
-    //   };
 
     useEffect(() => {
         const unsubscribe = onSnapshot(doc(database, 'chats', route.params.id), (doc) => {
