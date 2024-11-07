@@ -46,17 +46,21 @@ const TabNavigator = () => (
           iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
         } else if (route.name === 'Settings') {
           iconName = focused ? 'settings' : 'settings-outline';
+        } else if (route.name === 'Users') {
+          iconName = focused ? 'person-circle' : 'person-circle-outline';
         }
         return <Ionicons name={iconName} size={size} color={color} />;
       },
-      tabBarActiveTintColor: colors.primary,
+      tabBarActiveTintColor: '#1877F2',
       tabBarInactiveTintColor: 'gray',
       headerShown: true,
       presentation: 'modal',
     })}
   >
-    <Tab.Screen name="Chats" component={Chats} />
-    <Tab.Screen name="Settings" component={Settings} />
+    <Tab.Screen name="Chats" component={Chats} options={{ title: 'Home', headerTitleAlign: 'center', headerStyle: {backgroundColor: '#1877F2', height: 100}, headerTitleStyle: {color: '#FFFFFF', fontSize: 20} }}/>
+    <Stack.Screen name="Users" component={Users} options={{ title: 'Contacts', headerStyle: {backgroundColor: '#1877F2', height: 110}, headerTitleStyle: {color: '#FFFFFF', fontSize: 20}}} />
+    <Tab.Screen name="Settings" component={Settings} options={{headerStyle: {backgroundColor: '#1877F2', height: 110}, headerTitleStyle: {color: '#FFFFFF', fontSize: 20} }}/>
+    
   </Tab.Navigator>
 );
 
@@ -82,7 +86,7 @@ const MainStack = () => (
         ),
       })}
     />
-    <Stack.Screen name="Users" component={Users} options={{ title: 'Select User' }} />
+    
     <Stack.Screen name="Profile" component={Profile} />
     <Stack.Screen name="About" component={About} />
     <Stack.Screen name="Help" component={Help} />

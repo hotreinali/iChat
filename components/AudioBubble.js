@@ -6,6 +6,8 @@ import { getStorage, ref, getDownloadURL} from 'firebase/storage';
 import { auth, database, storage } from '../config/firebase';
 import { TEST_ID } from 'react-native-gifted-chat';
 import { onSnapshot, doc, addDoc, getDoc, getDocs, query, where, collection} from 'firebase/firestore';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 
 const AudioBubble = ({ currentMessage }) => {
@@ -156,6 +158,10 @@ const AudioBubble = ({ currentMessage }) => {
     } 
   };
 
+  const handlePress = () => {
+    setTimeout(getTranslation, 5000);
+  };
+
 
   // useEffect(() => {
   //   getTranslation();
@@ -167,13 +173,14 @@ const AudioBubble = ({ currentMessage }) => {
 
   return (
     <View>
-      <Text>Audio</Text>
-      <Text>{text}</Text>
+      {/* <Text>Audio</Text> */}
+      {/* <Text>{text}</Text> */}
       <TouchableOpacity onPress={playSound}>
-        <Text style={{ color: 'white' }}>Play</Text>
+        {/* <Text style={{ color: 'white' }}>Play</Text> */}
+        <AntDesign name="playcircleo" size={24} color="black" />
       </TouchableOpacity>
-      <TouchableOpacity onPress={getTranslation}>
-        <Text>Translate</Text>
+      <TouchableOpacity onPress={handlePress}>
+        <MaterialIcons name="g-translate" size={24} color="black" />
       </TouchableOpacity>
       <Text>{transText}</Text>
     </View>

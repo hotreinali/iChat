@@ -113,14 +113,14 @@ const Users = () => {
             <Cell
                 title='New group'
                 icon='people'
-                tintColor={colors.teal}
+                tintColor={colors.blue}
                 onPress={handleNewGroup}
                 style={{ marginTop: 5 }}
             />
             <Cell
                 title='New user'
                 icon='person-add'
-                tintColor={colors.teal}
+                tintColor={colors.blue}
                 onPress={handleNewUser}
                 style={{ marginBottom: 10 }}
             />

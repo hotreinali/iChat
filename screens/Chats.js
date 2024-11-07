@@ -5,7 +5,8 @@ import Separator from "../components/Separator";
 import { useNavigation } from '@react-navigation/native';
 import { auth, database } from '../config/firebase';
 import { collection, doc, where, query, onSnapshot, orderBy, setDoc, deleteDoc } from 'firebase/firestore';
-import { Ionicons } from '@expo/vector-icons';
+// import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from "../config/constants";
 
 const Chats = () => {
@@ -191,16 +192,17 @@ const Chats = () => {
                         ))
                     )}
                     <Separator />
-                    <View style={styles.blankContainer}>
+                    {/* <View style={styles.blankContainer}>
                         <Text style={{ fontSize: 12, margin: 15 }}>
                             <Ionicons name="lock-open" size={12} style={{ color: '#565656' }} /> Your personal messages are not <Text style={{ color: colors.teal }}>end-to-end-encrypted</Text>
                         </Text>
-                    </View>
+                    </View> */}
                 </ScrollView>
             )}
             <TouchableOpacity style={styles.fab} onPress={handleFabPress}>
                 <View style={styles.fabContainer}>
-                    <Ionicons name="chatbox-ellipses" size={24} color={'white'} />
+                    <Ionicons name="add-circle-outline" size={28} color="white" />
+                    {/* <Ionicons name="chatbox-ellipses" size={24} color={'white'} /> */}
                 </View>
             </TouchableOpacity>
         </Pressable>
@@ -216,13 +218,16 @@ const styles = StyleSheet.create({
     fabContainer: {
         width: 56,
         height: 56,
-        backgroundColor: colors.teal,
+        backgroundColor: '#1877F2',
         borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
     },
     container: {
-        flex: 1
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+        // borderTopLeftRadius: 50,
+        // borderTopRightRadius: 50,
     },
     blankContainer: {
         flex: 1,
@@ -237,7 +242,7 @@ const styles = StyleSheet.create({
     },
     trashBin: {
         right: 12,
-        color: colors.teal,
+        color: colors.white,
     },
     itemCount: {
         left: 100,
