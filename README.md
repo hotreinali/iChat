@@ -1,4 +1,7 @@
 # iChat
+<p align="center">
+<img width="230" alt="Screen Shot 2024-11-07 at 7 49 52 PM" src="https://github.com/user-attachments/assets/edc62f4c-bf33-489e-b0cc-380344fdcd71">
+</p>
 
 ## Overview
 This project is a cross-platform mobile application developed with React Native that allows users to send and receive real-time text and voice messages, along with translation capabilities for voice to support multilingual communication.
